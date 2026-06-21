@@ -9,6 +9,7 @@ const compression = require('compression');
 // --- Xavfsizlik va xatoliklarni boshqarish vositalari ---
 const config = require('./config/env');
 const errorHandler = require('./middlewares/errorHandler');
+const connectDB = require('./config/database');
 const { apiLimiterMiddleware } = require('./middlewares/rateLimiter');
 const { AppError } = require('./utils/appErrors');
 
@@ -82,6 +83,28 @@ app.use(cookieParser());
 // 1.7 Tarmoq trafigini tejash (GZIP kompressiya)
 // JSON javoblar hajmini 70-80% gacha kichraytirib, tarmoq o'tkazuvchanligini oshiradi
 app.use(compression());
+
+
+
+/**
+ * ==========================================
+ * 🚀 2. VERCEL SERVERLESS DATABASE GUARD MIDDLEWARE
+ * ==========================================
+ */
+// Har qanday API so'rov routerlarga o'tishidan oldin ulanish tayyorligini tekshiradi va kutadi
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("Serverless DB Middleware xatosi:", err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Ma\'lumotlar bazasi bilan aloqa o\'rnatilmadi.',
+      errorCode: 'DB_CONNECTION_TIMEOUT'
+    });
+  }
+});
 
 /**
  * ==========================================
